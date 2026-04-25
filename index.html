@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>消防団 第3分団第6部 参加チェック</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:#F8FAFC;color:#1e293b;font-size:16px}
+#app{padding:12px;max-width:640px;margin:0 auto}
+
+.header{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.header h1{font-size:15px;font-weight:600;color:#1e3a5f;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.header h1::before{content:"🚒";font-size:16px}
+.ctrl-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctrl-row label{font-size:13px;color:#64748b;font-weight:500}
+.ctrl-row select{font-size:14px;padding:5px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#1e293b;height:34px;font-weight:500}
+
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.stat-label{font-size:12px;color:#64748b;margin-bottom:3px}
+.stat-val{font-size:24px;font-weight:600;color:#1e3a5f}
+.stat-val span{font-size:13px;color:#94a3b8;font-weight:400}
+
+.sync-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:10px;font-size:12px;color:#64748b}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;margin-right:6px;display:inline-block;transition:background 0.3s}
+.sync-dot.ok{background:#22c55e}
+.sync-dot.loading{background:#f59e0b;animation:pulse 0.8s infinite}
+.sync-dot.error{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.sync-time{color:#94a3b8}
+
+.table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:520px}
+
+thead th{background:#f1f5f9;font-size:11px;font-weight:600;color:#64748b;padding:7px 3px;text-align:center;border-bottom:1px solid #e2e8f0;white-space:nowrap;position:sticky;top:0;z-index:2}
+thead th.name-col{text-align:left;padding-left:14px;min-width:90px;position:sticky;left:0;z-index:4;background:#f1f5f9}
+thead th.sum-col{min-width:40px;background:#e8f0fe;color:#1a56db}
+thead .dow-row th{font-size:10px;background:#fff;border-bottom:1px solid #e2e8f0;top:28px;font-weight:500}
+thead .dow-row th.name-col{background:#fff;z-index:4}
+thead .dow-row th.sat{color:#1d4ed8}
+thead .dow-row th.sun{color:#dc2626}
+
+tbody tr{transition:background 0.1s}
+tbody tr:nth-child(even){background:#f8fafc}
+tbody tr:nth-child(odd){background:#fff}
+tbody td{padding:2px;text-align:center;border-bottom:1px solid #f1f5f9}
+tbody td.name-col{text-align:left;padding:7px 8px 7px 14px;font-size:13px;font-weight:600;color:#1e293b;position:sticky;left:0;z-index:1;background:inherit;min-width:90px;white-space:nowrap;border-right:1px solid #e2e8f0}
+tbody td.sum-col{font-size:13px;font-weight:700;color:#1a56db;background:#f0f5ff}
+
+.check-btn{width:34px;height:34px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;border-radius:8px;font-size:17px;display:flex;align-items:center;justify-content:center;margin:0 auto;transition:all 0.15s;-webkit-tap-highlight-color:transparent}
+.check-btn.checked{background:#dcfce7;border-color:#86efac;color:#16a34a;font-weight:700}
+.check-btn.unchecked{color:#cbd5e1}
+.check-btn.loading-cell{opacity:0.5;pointer-events:none}
+.check-btn:active:not(.loading-cell){transform:scale(0.85)}
+
+tfoot td{background:#f1f5f9;font-size:12px;font-weight:600;padding:7px 3px;border-top:1px solid #e2e8f0;text-align:center;color:#64748b}
+tfoot td.name-col{text-align:left;padding-left:14px;position:sticky;left:0;z-index:1;background:#f1f5f9;border-right:1px solid #e2e8f0}
+tfoot td.total-num{color:#1a56db;font-size:13px}
+tfoot td.sum-col{background:#e8f0fe;color:#1a56db;font-weight:700}
+
+.today-col{background:rgba(34,197,94,0.06)!important}
+.sat-col{background:rgba(29,78,216,0.04)!important}
+.sun-col{background:rgba(220,38,38,0.04)!important}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div class="header">
+  <h1>消防団 第3分団第6部　参加チェック</h1>
+  <div class="ctrl-row">
+    <label>年</label>
+    <select id="sel-year"></select>
+    <label>月</label>
+    <select id="sel-month"></select>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-label">今月の延べ参加数</div>
+    <div class="stat-val" id="stat-total">— <span>回</span></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">本日の参加人数</div>
+    <div class="stat-val" id="stat-today">— <span>人</span></div>
+  </div>
+</div>
+
+<div class="sync-bar">
+  <div style="display:flex;align-items:center">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span id="sync-msg">データを読み込み中...</span>
+  </div>
+  <span class="sync-time" id="sync-time"></span>
+</div>
+
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table id="main-table"></table>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// ★ここにGASのデプロイURLを貼り付けてください
+//const GAS_URL = "https://script.google.com/macros/s/ここにURLを貼る/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxwDcRADHuaMNzr_egH7wfK8fdafacXa2HjGucueZVE65si1GXvP7bhDTXYQzdWaEEE/exec";
+// ============================================================
+
+const NAMES = ["川本 裕一","井上 直樹","望月 哲雄","渡邊 英三","中山 智宏","井上 一訓","中村 勇治","須賀 太","長谷川 貴","大塚 勇","日下部 広志","鈴木 悠","森嶋 厚博"];
+const DOW = ["日","月","火","水","木","金","土"];
+
+let data = {};
+let year, month;
+
+// ---- GAS通信 ----
+async function fetchData() {
+  setSyncStatus("loading", "読み込み中...");
+  try {
+    const res = await fetch(`${GAS_URL}?action=getAll&year=${year}&month=${month}`);
+    const json = await res.json();
+    if (json.status === "ok") {
+      data = json.data || {};
+      setSyncStatus("ok", "同期済み");
+      updateSyncTime();
+      return true;
+    }
+  } catch(e) {
+    setSyncStatus("error", "通信エラー");
+  }
+  return false;
+}
+
+async function toggleCheck(ni, day) {
+  const key = `${ni}_${day}`;
+  const btn = document.querySelector(`.check-btn[data-ni="${ni}"][data-d="${day}"]`);
+  if (btn) btn.classList.add("loading-cell");
+
+  try {
+    const url = `${GAS_URL}?action=toggle&year=${year}&month=${month}&ni=${ni}&day=${day}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status === "ok") {
+      data[key] = json.checked;
+      if (!json.checked) delete data[key];
+      buildTable();
+      updateStats();
+      updateSyncTime();
+      setSyncStatus("ok", "同期済み");
+      showToast(json.checked ? "〇 チェックしました" : "チェックを外しました");
+    }
+  } catch(e) {
+    setSyncStatus("error", "通信エラー");
+    showToast("通信エラーが発生しました");
+    if (btn) btn.classList.remove("loading-cell");
+  }
+}
+
+// ---- UI ----
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById("sync-dot");
+  dot.className = "sync-dot " + state;
+  document.getElementById("sync-msg").textContent = msg;
+}
+
+function updateSyncTime() {
+  const now = new Date();
+  document.getElementById("sync-time").textContent =
+    `${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")} 更新`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+function buildTable() {
+  const days = daysInMonth(year, month);
+  const today = new Date();
+  const todayDay = (today.getFullYear() === year && today.getMonth()+1 === month) ? today.getDate() : 0;
+  const table = document.getElementById("main-table");
+  let html = "<thead><tr>";
+  html += '<th class="name-col">氏名</th>';
+  for (let d = 1; d <= days; d++) {
+    const dow = new Date(year, month-1, d).getDay();
+    const cls = (d===todayDay?"today-col ":"") + (dow===6?"sat-col":dow===0?"sun-col":"");
+    html += `<th class="${cls}">${d}</th>`;
+  }
+  html += '<th class="sum-col">計</th></tr>';
+  html += '<tr class="dow-row"><th class="name-col"></th>';
+  for (let d = 1; d <= days; d++) {
+    const dow = new Date(year, month-1, d).getDay();
+    const cls = (d===todayDay?"today-col ":"") + (dow===6?"sat":dow===0?"sun":"");
+    html += `<th class="${cls}">${DOW[dow]}</th>`;
+  }
+  html += '<th class="sum-col"></th></tr></thead><tbody>';
+
+  NAMES.forEach((name, ni) => {
+    html += `<tr><td class="name-col">${name}</td>`;
+    let sum = 0;
+    for (let d = 1; d <= days; d++) {
+      const checked = !!data[`${ni}_${d}`];
+      if (checked) sum++;
+      const dow = new Date(year, month-1, d).getDay();
+      const tdCls = (d===todayDay?"today-col ":"") + (dow===6?"sat-col":dow===0?"sun-col":"");
+      html += `<td class="${tdCls}"><button class="check-btn ${checked?"checked":"unchecked"}" data-ni="${ni}" data-d="${d}">${checked?"〇":""}</button></td>`;
+    }
+    html += `<td class="sum-col">${sum||""}</td></tr>`;
+  });
+
+  html += "</tbody><tfoot><tr><td class='name-col'>参加人数</td>";
+  let grand = 0;
+  for (let d = 1; d <= days; d++) {
+    const dow = new Date(year, month-1, d).getDay();
+    const tdCls = (d===todayDay?"today-col ":"") + (dow===6?"sat-col":dow===0?"sun-col":"");
+    let cnt = 0;
+    NAMES.forEach((_, ni) => { if (data[`${ni}_${d}`]) cnt++; });
+    grand += cnt;
+    html += `<td class="${tdCls} ${cnt>0?"total-num":""}">${cnt||""}</td>`;
+  }
+  html += `<td class="sum-col total-num">${grand||""}</td></tr></tfoot>`;
+  table.innerHTML = html;
+
+  table.querySelectorAll(".check-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      toggleCheck(parseInt(btn.dataset.ni), parseInt(btn.dataset.d));
+    });
+  });
+}
+
+function updateStats() {
+  const days = daysInMonth(year, month);
+  const today = new Date();
+  const todayDay = (today.getFullYear()===year && today.getMonth()+1===month) ? today.getDate() : 0;
+  let total = 0, todayCnt = 0;
+  NAMES.forEach((_, ni) => {
+    for (let d = 1; d <= days; d++) {
+      if (data[`${ni}_${d}`]) { total++; if (d===todayDay) todayCnt++; }
+    }
+  });
+  document.getElementById("stat-total").innerHTML = `${total} <span>回</span>`;
+  document.getElementById("stat-today").innerHTML = `${todayCnt} <span>人</span>`;
+}
+
+async function reload() {
+  buildTable(); // まず空で描画
+  await fetchData();
+  buildTable();
+  updateStats();
+}
+
+function init() {
+  const now = new Date();
+  year = now.getFullYear(); month = now.getMonth()+1;
+  const ySel = document.getElementById("sel-year");
+  for (let y = 2024; y <= 2030; y++) {
+    const o = document.createElement("option");
+    o.value=y; o.textContent=y+"年"; if(y===year) o.selected=true;
+    ySel.appendChild(o);
+  }
+  const mSel = document.getElementById("sel-month");
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement("option");
+    o.value=m; o.textContent=m+"月"; if(m===month) o.selected=true;
+    mSel.appendChild(o);
+  }
+  ySel.addEventListener("change", () => { year=+ySel.value; reload(); });
+  mSel.addEventListener("change", () => { month=+mSel.value; reload(); });
+  reload();
+}
+init();
+</script>
+</body>
+</html>
