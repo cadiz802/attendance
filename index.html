@@ -112,7 +112,6 @@ tfoot td.sum-col{background:#e8f0fe;color:#1a56db;font-weight:700}
 <script>
 // ============================================================
 // ★ここにGASのデプロイURLを貼り付けてください
-//const GAS_URL = "https://script.google.com/macros/s/ここにURLを貼る/exec";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzE0n45uszN9de0H5qX8cP44rHW9Kbh5qzfX-blompIEllz8B6bWpEGLvLt5N5XMGo/exec";
 // ============================================================
 
@@ -142,26 +141,44 @@ async function fetchData() {
 
 async function toggleCheck(ni, day) {
   const key = `${ni}_${day}`;
-  const btn = document.querySelector(`.check-btn[data-ni="${ni}"][data-d="${day}"]`);
-  if (btn) btn.classList.add("loading-cell");
 
+  // ★楽観的UI更新：通信を待たずに即座に画面を変える
+  const prevChecked = !!data[key];
+  const newChecked = !prevChecked;
+  if (newChecked) {
+    data[key] = true;
+  } else {
+    delete data[key];
+  }
+  buildTable();
+  updateStats();
+  setSyncStatus("loading", "同期中...");
+  showToast(newChecked ? "〇 チェックしました" : "チェックを外しました");
+
+  // バックグラウンドでGASに送信
   try {
     const url = `${GAS_URL}?action=toggle&year=${year}&month=${month}&ni=${ni}&day=${day}`;
     const res = await fetch(url);
     const json = await res.json();
     if (json.status === "ok") {
-      data[key] = json.checked;
-      if (!json.checked) delete data[key];
-      buildTable();
-      updateStats();
-      updateSyncTime();
+      // サーバーの結果と食い違いがあれば修正
+      if (json.checked !== newChecked) {
+        if (json.checked) { data[key] = true; } else { delete data[key]; }
+        buildTable();
+        updateStats();
+      }
       setSyncStatus("ok", "同期済み");
-      showToast(json.checked ? "〇 チェックしました" : "チェックを外しました");
+      updateSyncTime();
+    } else {
+      throw new Error("server error");
     }
   } catch(e) {
-    setSyncStatus("error", "通信エラー");
-    showToast("通信エラーが発生しました");
-    if (btn) btn.classList.remove("loading-cell");
+    // 失敗したら元に戻す
+    if (prevChecked) { data[key] = true; } else { delete data[key]; }
+    buildTable();
+    updateStats();
+    setSyncStatus("error", "同期失敗 - やり直してください");
+    showToast("通信エラー：チェックを元に戻しました");
   }
 }
 
