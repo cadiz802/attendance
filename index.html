@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>消防団 第3分団第6部 参加チェック</title>
+<title>消防団 第3分団第6部 出場チェック</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:#F8FAFC;color:#1e293b;font-size:16px}
@@ -75,7 +75,7 @@ tfoot td.sum-col{background:#e8f0fe;color:#1a56db;font-weight:700}
 <div id="app">
 
 <div class="header">
-  <h1>消防団 第3分団第6部　参加チェック</h1>
+  <h1>消防団 第3分団第6部　出場チェック</h1>
   <div class="ctrl-row">
     <label>年</label>
     <select id="sel-year"></select>
@@ -86,11 +86,11 @@ tfoot td.sum-col{background:#e8f0fe;color:#1a56db;font-weight:700}
 
 <div class="stats-row">
   <div class="stat-card">
-    <div class="stat-label">今月の延べ参加数</div>
+    <div class="stat-label">今月の延べ出場数</div>
     <div class="stat-val" id="stat-total">— <span>回</span></div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">本日の参加人数</div>
+    <div class="stat-label">本日の出場人数</div>
     <div class="stat-val" id="stat-today">— <span>人</span></div>
   </div>
 </div>
@@ -245,7 +245,7 @@ function buildTable() {
     html += `<td class="sum-col">${sum||""}</td></tr>`;
   });
 
-  html += "</tbody><tfoot><tr><td class='name-col'>参加人数</td>";
+  html += "</tbody><tfoot><tr><td class='name-col'>出場人数</td>";
   let grand = 0;
   for (let d = 1; d <= days; d++) {
     const dow = new Date(year, month-1, d).getDay();
@@ -303,7 +303,7 @@ function exportExcel() {
     const wsData = [];
 
     // タイトル行
-    wsData.push([`消防団 第3分団第6部 参加チェックシート ${year}年${month}月`]);
+    wsData.push([`消防団 第3分団第6部 出場チェックシート ${year}年${month}月`]);
     wsData.push([]);
 
     // 日付ヘッダー行
@@ -334,8 +334,8 @@ function exportExcel() {
       wsData.push(row);
     });
 
-    // 参加人数合計行
-    const totalRow = ["参加人数"];
+    // 出場人数合計行
+    const totalRow = ["出場人数"];
     let grand = 0;
     for (let d = 1; d <= days; d++) {
       let cnt = 0;
@@ -354,7 +354,7 @@ function exportExcel() {
     ws["!cols"].push({ wch: 6 });
 
     XLSX.utils.book_append_sheet(wb, ws, `${year}年${month}月`);
-    XLSX.writeFile(wb, `参加チェック_${year}年${month}月.xlsx`);
+    XLSX.writeFile(wb, `出場チェック_${year}年${month}月.xlsx`);
     showToast("📥 Excelをダウンロードしました！");
   };
   document.head.appendChild(script);
