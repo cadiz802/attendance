@@ -66,6 +66,9 @@ tfoot td.sum-col{background:#e8f0fe;color:#1a56db;font-weight:700}
 
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1}
+.export-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;padding:13px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(30,58,95,0.25);transition:all 0.15s;-webkit-tap-highlight-color:transparent}
+.export-btn:active{transform:scale(0.97);background:#162d4a}
+.export-btn .icon{font-size:18px}
 </style>
 </head>
 <body>
@@ -107,12 +110,16 @@ tfoot td.sum-col{background:#e8f0fe;color:#1a56db;font-weight:700}
 </div>
 </div>
 
+<button class="export-btn" onclick="exportExcel()">
+  <span class="icon">📥</span> Excelにエクスポート（${year}年${month}月）
+</button>
+
 <div class="toast" id="toast"></div>
 
 <script>
 // ============================================================
 // ★ここにGASのデプロイURLを貼り付けてください
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzE0n45uszN9de0H5qX8cP44rHW9Kbh5qzfX-blompIEllz8B6bWpEGLvLt5N5XMGo/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxhb-1vNG2V5pBVXsMFrSgnpGJdYfA-M_CkWleCtYVt-zkRhxFr1vCg1U7oz5EyoMlc/exec";
 // ============================================================
 
 const NAMES = ["川本 裕一","井上 直樹","望月 哲雄","渡邊 英三","中山 智宏","井上 一訓","中村 勇治","須賀 太","長谷川 貴","大塚 勇","日下部 広志","鈴木 悠","森嶋 厚博"];
@@ -251,6 +258,10 @@ function buildTable() {
   html += `<td class="sum-col total-num">${grand||""}</td></tr></tfoot>`;
   table.innerHTML = html;
 
+  // エクスポートボタンのテキストを更新
+  const expBtn = document.querySelector(".export-btn");
+  if (expBtn) expBtn.innerHTML = `<span class="icon">📥</span> Excelにエクスポート（${year}年${month}月）`;
+
   table.querySelectorAll(".check-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       toggleCheck(parseInt(btn.dataset.ni), parseInt(btn.dataset.d));
@@ -277,6 +288,76 @@ async function reload() {
   await fetchData();
   buildTable();
   updateStats();
+}
+
+// ---- Excelエクスポート ----
+function exportExcel() {
+  const days = daysInMonth(year, month);
+  const DOW_JA = ["日","月","火","水","木","金","土"];
+
+  // SheetJSを使ってExcel生成
+  const script = document.createElement("script");
+  script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  script.onload = () => {
+    const wb = XLSX.utils.book_new();
+    const wsData = [];
+
+    // タイトル行
+    wsData.push([`消防団 第3分団第6部 参加チェックシート ${year}年${month}月`]);
+    wsData.push([]);
+
+    // 日付ヘッダー行
+    const dateRow = ["氏名"];
+    for (let d = 1; d <= days; d++) dateRow.push(d);
+    dateRow.push("合計");
+    wsData.push(dateRow);
+
+    // 曜日行
+    const dowRow = [""];
+    for (let d = 1; d <= days; d++) {
+      const dow = new Date(year, month-1, d).getDay();
+      dowRow.push(DOW_JA[dow]);
+    }
+    dowRow.push("");
+    wsData.push(dowRow);
+
+    // メンバーデータ行
+    NAMES.forEach((name, ni) => {
+      const row = [name];
+      let sum = 0;
+      for (let d = 1; d <= days; d++) {
+        const checked = !!data[`${ni}_${d}`];
+        row.push(checked ? "〇" : "");
+        if (checked) sum++;
+      }
+      row.push(sum);
+      wsData.push(row);
+    });
+
+    // 参加人数合計行
+    const totalRow = ["参加人数"];
+    let grand = 0;
+    for (let d = 1; d <= days; d++) {
+      let cnt = 0;
+      NAMES.forEach((_, ni) => { if (data[`${ni}_${d}`]) cnt++; });
+      totalRow.push(cnt || "");
+      grand += cnt;
+    }
+    totalRow.push(grand);
+    wsData.push(totalRow);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // 列幅設定
+    ws["!cols"] = [{ wch: 12 }];
+    for (let d = 0; d < days; d++) ws["!cols"].push({ wch: 5 });
+    ws["!cols"].push({ wch: 6 });
+
+    XLSX.utils.book_append_sheet(wb, ws, `${year}年${month}月`);
+    XLSX.writeFile(wb, `参加チェック_${year}年${month}月.xlsx`);
+    showToast("📥 Excelをダウンロードしました！");
+  };
+  document.head.appendChild(script);
 }
 
 function init() {
